@@ -6,8 +6,9 @@ on:
       - main
 
 permissions:
-  id-token: write  # Required for OIDC
+  id-token: write
   contents: read
+  packages: write  # Required to publish packages to GitHub Packages
 
 jobs:
   build:
@@ -53,12 +54,19 @@ jobs:
         if: ${{ success() }}
         run: mvn clean install
 
-      # ✅ AWS credentials setup for SES
+      - name: Deploy to GitHub Packages
+        if: ${{ success() }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mvn deploy -DskipTests=true \
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/${{ github.repository }}
+
       - name: Configure AWS credentials
         if: ${{ success() }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::399359779313:role/cicdgithub  # Replace with your IAM role ARN
+          role-to-assume: arn:aws:iam::399359779313:role/cicdgithub
           aws-region: us-east-1
 
       - name: Send success email with SES
@@ -71,7 +79,7 @@ jobs:
               "Subject": {"Data": "✅ Maven Build Successful"},
               "Body": {
                 "Text": {
-                  "Data": "The Maven build for ${{ github.repository }} on branch `${{ github.ref_name }}` completed successfully.\n\nCommit: `${{ github.sha }}`\nRun URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                  "Data": "The Maven build and deploy for ${{ github.repository }} on branch `${{ github.ref_name }}` completed successfully.\n\nCommit: `${{ github.sha }}`\nRun URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
                 }
               }
             }' \
