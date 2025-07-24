@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     name: Build and analyze
@@ -13,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full git history for better analysis
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -46,6 +50,97 @@ jobs:
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
-      - name: Build with Maven (only if Sonar succeeded)
+      - name: Build with Maven
         if: ${{ success() }}
         run: mvn clean install
+
+      - name: Send success email with SES
+        if: ${{ success() }}
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          aws ses send-email \
+            --from 'abishnevs@gmail.com' \
+            --destination '{"ToAddresses":["jagathgiridharan@gmail.com"]}' \
+            --message '{
+              "Subject": {"Data": "✅ Maven Build Successful"},
+              "Body": {
+                "Text": {
+                  "Data": "The Maven build for ${{ github.repository }} on branch `${{ github.ref_name }}` completed successfully.\n\nCommit: `${{ github.sha }}`\nRun URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              }
+            }' \
+            --region $AWS_REGION
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Run SonarQube Analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=devops \
+            -Dsonar.projectName='devops' \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Build with Maven
+        if: ${{ success() }}
+        run: mvn clean install
+
+      - name: Send success email with SES
+        if: ${{ success() }}
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          aws ses send-email \
+            --from 'abishnevs@gmail.com' \
+            --destination '{"ToAddresses":["jagathgiridharan@gmail.com"]}' \
+            --message '{
+              "Subject": {"Data": "✅ Maven Build Successful"},
+              "Body": {
+                "Text": {
+                  "Data": "The Maven build for ${{ github.repository }} on branch `${{ github.ref_name }}` completed successfully.\n\nCommit: `${{ github.sha }}`\nRun URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                }
+              }
+            }' \
+            --region $AWS_REGION
