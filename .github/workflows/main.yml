@@ -24,14 +24,14 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # IMPORTANT: Replace 'YOUR_IAM_ROLE_ARN_GOES_HERE' with the actual ARN of your IAM role from AWS!
-          role-to-assume: arn:aws:iam::760715349705:role/cicdgithub
-          aws-region: eu-north-1 # Example: us-east-1
+          role-to-assume: arn:aws:iam::399359779313:role/cicdgithub
+          aws-region: us-east-1 # Example: us-east-1
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           # IMPORTANT: Replace 'YOUR_IAM_ROLE_ARN_GOES_HERE' with the actual ARN of your IAM role from AWS!
-          role-to-assume: arn:aws:iam::760715349705:role/cicdgithub
-          aws-region: eu-north-1 # Example: us-east-1
+          role-to-assume: arn:aws:iam::399359779313:role/cicdgithub
+          aws-region: us-east-1 # Example: us-east-1
       - name: Send Email Notification (on success)
         if: success()
         run: |
