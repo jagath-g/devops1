@@ -6,12 +6,11 @@ on:
       - main
 
 permissions:
-  id-token: write
+  id-token: write  # Required for OIDC
   contents: read
 
 jobs:
   build:
-    name: Build and analyze
     runs-on: ubuntu-latest
 
     steps:
@@ -54,10 +53,16 @@ jobs:
         if: ${{ success() }}
         run: mvn clean install
 
+      # ✅ AWS credentials setup for SES
+      - name: Configure AWS credentials
+        if: ${{ success() }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::399359779313:role/cicdgithub  # Replace with your IAM role ARN
+          aws-region: us-east-1
+
       - name: Send success email with SES
         if: ${{ success() }}
-        env:
-          AWS_REGION: us-east-1
         run: |
           aws ses send-email \
             --from 'abishnevs@gmail.com' \
@@ -70,4 +75,4 @@ jobs:
                 }
               }
             }' \
-            --region $AWS_REGION
+            --region us-east-1
